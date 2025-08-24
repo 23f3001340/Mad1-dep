@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <title>Dashboard Charts</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet" />
+</head>
+
+<body class="bg-light">
+   <header class="bg-dark text-light border-bottom">
+  <div class="container-fluid d-flex flex-wrap align-items-center justify-content-between py-2">
+    <div class="fs-4 px-2">
+      Welcome Admin
+    </div>
+
+    <nav class="nav nav-pills fs-5">
+      <a class="nav-link text-light" href="/admin_dashboard">Home</a>
+      <a class="nav-link text-light" href="/view_registered_users">Users</a>
+      <a class="nav-link text-light" href="/search">Search</a>
+      <a class="nav-link text-light" href="/admin_summary">Summary</a>
+      <a class="nav-link text-light" href="/">Logout</a>
+    </nav>
+  </div>
+</header>
+
+    <div class="container mt-5">
+        <h2 class="text-center mb-4">Dashboard Summary</h2>
+        <div class="text-center">
+            <img src="data:image/png;base64,{{ plot_url }}" class="img-fluid border rounded shadow-sm" style="max-width: 90%;" alt="Admin Summary Charts" />
+        </div>
+    </div>
+
+  
+</body>
+</html>

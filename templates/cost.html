@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Bootstrap demo</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.7/dist/css/bootstrap.min.css" rel="stylesheet"
+        integrity="sha384-LN+7fdVzj6u52u30Kp6M/trliBMCMKTyK833zpbD+pXdCLuTusPj697FH4R/5mcr" crossorigin="anonymous">
+</head>
+
+<body>
+    <header class="bg-dark text-light border-bottom">
+        <div class="container-fluid d-flex flex-wrap align-items-center justify-content-between py-2">
+            <div class="fs-4 px-2">
+                Hello {{ user_name }} 😁
+            </div>
+
+            <nav class="nav nav-pills fs-5">
+                <a class="nav-link text-light" href="/user_dashboard"> Home</a>
+                <a class="nav-link text-light" href="/about"> About</a>
+                <a class="nav-link text-light" href="/contact"> Contact</a>
+                <a class="nav-link text-light" href="/summary"> Summary</a>
+                <a class="nav-link text-light" href="/cost"> Bill</a>
+                <a class="nav-link text-light" href="/"> Logout</a>
+            </nav>
+
+
+        </div>
+
+    </header>
+    <div class="row">
+        <div class="col-1">
+
+        </div>
+       <br>
+        <div class="col-10 container-fluid bg-light mt-4 p-4 rounded-3 ">
+            <br>
+            <div class="card">
+                <div class="card-header">
+                    <h3>Bill Summary</h3>
+                </div>
+             <br>
+            <table class="table table-bordered table-striped mt-4">
+                <thead>
+                    <tr>
+                        <th>Sl.No</th>
+                        <th>Address</th>
+                        <Th>Slot_Name</Th>
+                        <th>Entry Time</th>
+                        <th>Exit-time</th>
+                        <th>Cost</th>
+
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        {% for i in zdata %}
+                        <td>{{loop.index}}</td>
+                        <td>{{ i[6] }}</td>
+                        <td>{{ i[7] }}</td>
+                        <td>{{ i[3] }}</td>
+                        <td>{{ i[4] }}</td>
+                        <td>{{ i[5] }}</td>
+
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table></div>
+        </div>
+        <div class="container-fluid col-1">
+            <a href="/bill_options" class="btn btn-primary mt-3 btn-sm me-3 rounded-pill"> Bill Generate</a>
+</div>
+    </div>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.7/dist/js/bootstrap.bundle.min.js"
+        integrity="sha384-ndDqU0Gzau9qJ1lfW4pNLlhNTkCfHzAVBReH9diLvGRem5+R9g2FzA8ZGN954O5Q"
+        crossorigin="anonymous"></script>
+</body>
+
+</html>

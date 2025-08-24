@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Registered Users</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body>
+
+<header class="bg-dark text-light border-bottom">
+  <div class="container-fluid d-flex flex-wrap align-items-center justify-content-between py-2">
+    <div class="fs-4 px-2">
+      Welcome Admin
+    </div>
+
+    <nav class="nav nav-pills fs-5">
+      <a class="nav-link text-light" href="/admin_dashboard">Home</a>
+      <a class="nav-link text-light" href="/view_registered_users">Users</a>
+      <a class="nav-link text-light" href="/search">Search</a>
+      <a class="nav-link text-light" href="/admin_summary">Summary</a>
+      <a class="nav-link text-light" href="/">Logout</a>
+    </nav>
+  </div>
+</header>
+
+<div class="container">
+    <h2 class="mb-4">Registered User</h2>
+    <div class="table-responsive">
+        <table class="table table-striped table-bordered">
+            <thead class="table-dark">
+                <tr>
+                    <th>ID</th>
+                    <th>Name</th>
+                    <th>Email</th>
+                    <th>Address</th>
+                    <th>Pincode</th>
+                    <th>Driving License</th>
+                    <th>Phone Number</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for user in users %}
+                <tr>
+                    <td>{{ user[0] }}</td> <!-- ID -->
+                    <td>{{ user[1] }}</td> <!-- Name -->
+                    <td>{{ user[2] }}</td> <!-- Email -->
+                    <td>{{ user[5] }}</td> <!-- Address -->
+                    <td>{{ user[7] }}</td> <!-- Pincode -->
+                    <td>{{ user[8] }}</td> <!-- Driving License -->
+                    <td>{{ user[6] }}</td> <!-- Phone Number -->
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="7" class="text-center">No users found.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Bootstrap JS -->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
+</body>
+</html>
