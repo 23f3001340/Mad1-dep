@@ -23,17 +23,17 @@ def register_user():
         mobile_number = request.form['mobile_number']
         driving_licese = request.form['driving_licese']
 
-        conn = sqlite3.connect('parkingvehicle.db')
-        c = conn.cursor()
-        try:
-            c.execute("""
-                INSERT INTO users (user_name,email, password, full_name, address,mobile_number, pin_code,driving_licese)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-            """, (user_name,email, password, full_name, address,mobile_number, pin_code,driving_licese))
-            conn.commit()
-        except sqlite3.IntegrityError:
-            return "User already exists!"
-        conn.close()
+        with sqlite3.connect('parkingvehicle.db', timeout=10) as conn:
+            c = conn.cursor()
+            try:
+                c.execute("""
+                    INSERT INTO users (user_name,email, password, full_name, address,mobile_number, pin_code,driving_licese)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                """, (user_name,email, password, full_name, address,mobile_number, pin_code,driving_licese))
+                conn.commit()
+            except sqlite3.IntegrityError:
+                return "User already exists!"
+            conn.close()
 
         return redirect('/login')
     return render_template('register.html')
@@ -42,21 +42,21 @@ def login_user():
     if request.method == 'POST':
         email = request.form['email']
         password = request.form['password']
-        conn = sqlite3.connect('parkingvehicle.db')
-        c = conn.cursor()
-        c.execute("SELECT * FROM users WHERE email=? AND password=?", (email, password))
-        user = c.fetchone()
-        conn.close()
-        if user:
+        with sqlite3.connect('parkingvehicle.db', timeout=10) as conn:
+            c = conn.cursor()
+            c.execute("SELECT * FROM users WHERE email=? AND password=?", (email, password))
+            user = c.fetchone()
+            conn.close()
             if user:
-                session['user_id'] = user[0]  
-                session['user_name'] = user[3] 
-                session['email']=user[1] 
-                return redirect('/user_dashboard')
+                if user:
+                    session['user_id'] = user[0]  
+                    session['user_name'] = user[3] 
+                    session['email']=user[1] 
+                    return redirect('/user_dashboard')
 
-            return redirect('/user_dashboard')
-        else:
-            return "Invalid credentials!"
+                return redirect('/user_dashboard')
+            else:
+                return "Invalid credentials!"
     return render_template('login.html')
 @app.route('/user_dashboard', methods=['GET', 'POST'])
 def user_dashboard():
@@ -66,54 +66,54 @@ def user_dashboard():
 
     user_id = session['user_id']
     
-    conn_user = sqlite3.connect('parkingvehicle.db')
-    c = conn_user.cursor()
+    with sqlite3.connect('parkingvehicle.db', timeout=10) as conn_user:
+        c = conn_user.cursor()
 
-    c.execute("SELECT * FROM users WHERE id=?", (user_id,))
-    user = c.fetchone()
-    user_name = user[1]
-    c.execute("SELECT * FROM slots")
-    row=c.fetchall()
-    for i in row:
-        b=i[0]
-        d=i[3]
-        x=update_avaiable(b)
+        c.execute("SELECT * FROM users WHERE id=?", (user_id,))
+        user = c.fetchone()
+        user_name = user[1]
+        c.execute("SELECT * FROM slots")
+        row=c.fetchall()
+        for i in row:
+            b=i[0]
+            d=i[3]
+            x=update_avaiable(b)
+            c.execute("""
+            UPDATE slots
+            SET available = ?
+            WHERE id=?
+        """, (x,b))
+        conn_user.commit()
         c.execute("""
-        UPDATE slots
-        SET available = ?
-        WHERE id=?
-    """, (x,b))
-    conn_user.commit()
-    c.execute("""
-        SELECT id, user_name, vehicle_number, entry_time, exit_time, status, slot_address
-        FROM bookings
-        WHERE user_name = ?
-        ORDER BY entry_time DESC
-        LIMIT 5;
-    """, (user_name,))
-    row = c.fetchall()
+            SELECT id, user_name, vehicle_number, entry_time, exit_time, status, slot_address
+            FROM bookings
+            WHERE user_name = ?
+            ORDER BY entry_time DESC
+            LIMIT 5;
+        """, (user_name,))
+        row = c.fetchall()
 
-    c.execute("SELECT slot_name, slot_address, pincode,total_lot,id ,available FROM slots")
-    slots = c.fetchall()
+        c.execute("SELECT slot_name, slot_address, pincode,total_lot,id ,available FROM slots")
+        slots = c.fetchall()
 
-    if request.method == 'POST':
-        print("this is to check",request.method)
-        query = request.form.get('query')
-        if not query:  
-            return render_template('user_dashboard.html', 
-                                 error="Please enter a search term")
+        if request.method == 'POST':
+            print("this is to check",request.method)
+            query = request.form.get('query')
+            if not query:  
+                return render_template('user_dashboard.html', 
+                                    error="Please enter a search term")
 
-        matched_slots = []
-        for slot in slots:
-            slot_name, slot_address, pincode ,total_lot,id,available= slot
-            if query.lower() in slot_name.lower() or query.lower() in slot_address.lower() or query.lower() in str(pincode)or query.lower() in str(total_lot)or query.lower() in str(id)or query.lower() in str(available):
-                matched_slots.append(slot)
-       
-            print(matched_slots)    
+            matched_slots = []
+            for slot in slots:
+                slot_name, slot_address, pincode ,total_lot,id,available= slot
+                if query.lower() in slot_name.lower() or query.lower() in slot_address.lower() or query.lower() in str(pincode)or query.lower() in str(total_lot)or query.lower() in str(id)or query.lower() in str(available):
+                    matched_slots.append(slot)
+        
+                print(matched_slots)    
 
-        return render_template('user_dashboard.html', user_name=user_name, row=row, matched_slots=matched_slots,query=query)
+            return render_template('user_dashboard.html', user_name=user_name, row=row, matched_slots=matched_slots,query=query)
 
-    conn_user.close()
+        conn_user.close()
 
     return render_template('user_dashboard.html', user_name=user_name, row=row)
 
@@ -426,36 +426,36 @@ def admin_dashooard():
     if 'admin_id' not in session:
         return redirect('/admin_login')
     
-    conn = sqlite3.connect('parkingvehicle.db')
-    conn.row_factory = sqlite3.Row  # So you can use column names like row['id']
-    c = conn.cursor()
+    with sqlite3.connect('parkingvehicle.db', timeout=10) as conn:
+        conn.row_factory = sqlite3.Row  # So you can use column names like row['id']
+        c = conn.cursor()
 
-    # Fetch all slots
-    c.execute("SELECT * FROM slots")
-    slots = c.fetchall()
+        # Fetch all slots
+        c.execute("SELECT * FROM slots")
+        slots = c.fetchall()
 
-    slot_data = []
+        slot_data = []
 
-    for slot in slots:
-        slot_id = slot['id']
-        total_lot = slot['total_lot']
-        
-        # Update available lots for this slot
-        x = update_avaiable(slot_id)
-        c.execute("UPDATE slots SET available = ? WHERE id = ?", (x, slot_id))
-        conn.commit()
+        for slot in slots:
+            slot_id = slot['id']
+            total_lot = slot['total_lot']
+            
+            # Update available lots for this slot
+            x = update_avaiable(slot_id)
+            c.execute("UPDATE slots SET available = ? WHERE id = ?", (x, slot_id))
+            conn.commit()
 
-        # Get all lots for this slot
-        c.execute("SELECT * FROM lots WHERE slot_id = ? ORDER BY lot_no", (slot_id,))
-        lots = c.fetchall()
+            # Get all lots for this slot
+            c.execute("SELECT * FROM lots WHERE slot_id = ? ORDER BY lot_no", (slot_id,))
+            lots = c.fetchall()
 
-        # Append to slot_data
-        slot_data.append({
-            'slot': slot,
-            'lots': lots
-        })
+            # Append to slot_data
+            slot_data.append({
+                'slot': slot,
+                'lots': lots
+            })
 
-    conn.close()
+        conn.close()
 
     return render_template('admin_dashboard.html', slot_data=slot_data)
 
@@ -477,62 +477,62 @@ def set_slot_session():
     return redirect('/user_booking')
 @app.route('/user/release/<int:booking_id>')
 def dec_count(booking_id):
-    conn = sqlite3.connect('parkingvehicle.db')
-    c = conn.cursor()
-    c.execute("SELECT * FROM bookings WHERE id = ?", (booking_id,))
-    t = c.fetchall()
-    st_id=t[0][7]
-    print(st_id)
-    lt_id=t[0][8]
-    occ=0
-    sts=0
-    x=earning(booking_id)
-    exit=x[0]
-    c.execute("SELECT * FROM slots WHERE id = ?", (st_id,))
-    print(st_id)
-    y=c.fetchall()
-    print(y)
-    cost=y[0][4]
-    dur=x[1]
-    earnings=cost*dur
-    tot_ear=y[0][6]
-    print('this is total earning of slot id',tot_ear)
-    
+    with sqlite3.connect('parkingvehicle.db', timeout=10) as conn:
+        c = conn.cursor()
+        c.execute("SELECT * FROM bookings WHERE id = ?", (booking_id,))
+        t = c.fetchall()
+        st_id=t[0][7]
+        print(st_id)
+        lt_id=t[0][8]
+        occ=0
+        sts=0
+        x=earning(booking_id)
+        exit=x[0]
+        c.execute("SELECT * FROM slots WHERE id = ?", (st_id,))
+        print(st_id)
+        y=c.fetchall()
+        print(y)
+        cost=y[0][4]
+        dur=x[1]
+        earnings=cost*dur
+        tot_ear=y[0][6]
+        print('this is total earning of slot id',tot_ear)
+        
 
-    if y[0][6] is not None:
-        tot_ear+=earnings
+        if y[0][6] is not None:
+            tot_ear+=earnings
+            c.execute("""
+            UPDATE slots
+            SET total_earning = ?
+            WHERE id=?
+        """, (tot_ear,st_id))
+            conn.commit()
+        else:
+            c.execute("""
+            UPDATE slots
+            SET total_earning = ?
+            WHERE id=?
+        """, (earnings,st_id))
+            conn.commit()
+
+        
+
         c.execute("""
-        UPDATE slots
-        SET total_earning = ?
-        WHERE id=?
-    """, (tot_ear,st_id))
+        UPDATE lots
+        SET occupied = ?, exit_time = ?,earning= ?
+        WHERE lot_no = ? AND slot_id = ?
+    """, (occ,exit,earnings, lt_id, st_id))
         conn.commit()
-    else:
+
         c.execute("""
-        UPDATE slots
-        SET total_earning = ?
+        UPDATE bookings
+        SET status = ?, exit_time = ?
         WHERE id=?
-    """, (earnings,st_id))
+    """, (sts,exit, booking_id))
         conn.commit()
 
-    
-
-    c.execute("""
-    UPDATE lots
-    SET occupied = ?, exit_time = ?,earning= ?
-    WHERE lot_no = ? AND slot_id = ?
-""", (occ,exit,earnings, lt_id, st_id))
-    conn.commit()
-
-    c.execute("""
-    UPDATE bookings
-    SET status = ?, exit_time = ?
-    WHERE id=?
-""", (sts,exit, booking_id))
-    conn.commit()
-
-    conn.close()
-    
+        conn.close()
+        
 
 
     return redirect('/user_dashboard')
@@ -656,130 +656,130 @@ def edit_slot(slot_id):
     return render_template("admin_adit_slot.html",ed=ed)
 @app.route('/delete_slot/<slot_id>', methods=['GET', 'POST'])
 def del_slot(slot_id):
-    conn = sqlite3.connect('parkingvehicle.db')
-    c = conn.cursor()
-    c.execute("DELETE FROM slots WHERE id = ?", (slot_id,))
-    conn.commit()
-    conn.close()
+    with sqlite3.connect('parkingvehicle.db', timeout=10) as conn:
+        c = conn.cursor()
+        c.execute("DELETE FROM slots WHERE id = ?", (slot_id,))
+        conn.commit()
+        conn.close()
     return redirect('/admin_dashboard')
 
 @app.route('/view_registered_users')
 def view_register_user():
-    conn=sqlite3.connect('parkingvehicle.db')
-    c=conn.cursor()
-    c.execute("SELECT * FROM users")
-    users=c.fetchall()
-    print(users)
-    conn.close()
+    with sqlite3.connect('parkingvehicle.db', timeout=10) as conn:
+        c=conn.cursor()
+        c.execute("SELECT * FROM users")
+        users=c.fetchall()
+        print(users)
+        conn.close()
     return render_template('view_registered_user.html',users=users)
 @app.route('/admin_summary')
 def admin_summary():
-    conn=sqlite3.connect('parkingvehicle.db')
-    c=conn.cursor()
-    c.execute("SELECT * FROM slots ")
-    z=c.fetchall()
-    avail=[]
-    add=[]
-    cos=[]
-    tot=[]
+    with sqlite3.connect('parkingvehicle.db', timeout=10) as conn:
+        c=conn.cursor()
+        c.execute("SELECT * FROM slots ")
+        z=c.fetchall()
+        avail=[]
+        add=[]
+        cos=[]
+        tot=[]
 
-    for i in z:
-        avail.append(i[7])
-    print(avail)
-    for i in z:
-        add.append(i[2])
-    print(add)
-    for i in z:
-        cos.append(i[6])
-    print(cos)
-    for i in z:
-        tot.append(i[3])
-    print(tot)
-    cos1 = [0 if (v is None or (isinstance(v, float) and math.isnan(v))) else v for v in cos]
-
-
-    fig, ((ax1, ax2), (ax3, ax4)) = pt.subplots(2, 2, figsize=(12, 8))  
+        for i in z:
+            avail.append(i[7])
+        print(avail)
+        for i in z:
+            add.append(i[2])
+        print(add)
+        for i in z:
+            cos.append(i[6])
+        print(cos)
+        for i in z:
+            tot.append(i[3])
+        print(tot)
+        cos1 = [0 if (v is None or (isinstance(v, float) and math.isnan(v))) else v for v in cos]
 
 
-    
-    ax1.pie(tot, labels=add, autopct='%1.1f%%', startangle=140)
-    ax1.set_title('Total lot in each slot')
+        fig, ((ax1, ax2), (ax3, ax4)) = pt.subplots(2, 2, figsize=(12, 8))  
 
-    
-    ax2.pie(cos1, labels=add, autopct='%1.1f%%', colors=['pink',"lightblue" ,'lightgreen'], startangle=90)
-    ax2.set_title('Earning per Slot ')
 
-    
-    ax3.bar(add, avail, color='skyblue')
-    ax3.set_title('Current lot available per slot')
-    ax3.set_xlabel('Parking Lot')
-    ax3.set_ylabel('Vehicles')
-    ax4.axis('off')
-    
-    img = io.BytesIO()
-    pt.tight_layout()
-    fig.savefig(img, format='png')
-    img.seek(0)
-    plot_url = base64.b64encode(img.getvalue()).decode()
-    pt.close(fig)
+        
+        ax1.pie(tot, labels=add, autopct='%1.1f%%', startangle=140)
+        ax1.set_title('Total lot in each slot')
+
+        
+        ax2.pie(cos1, labels=add, autopct='%1.1f%%', colors=['pink',"lightblue" ,'lightgreen'], startangle=90)
+        ax2.set_title('Earning per Slot ')
+
+        
+        ax3.bar(add, avail, color='skyblue')
+        ax3.set_title('Current lot available per slot')
+        ax3.set_xlabel('Parking Lot')
+        ax3.set_ylabel('Vehicles')
+        ax4.axis('off')
+        
+        img = io.BytesIO()
+        pt.tight_layout()
+        fig.savefig(img, format='png')
+        img.seek(0)
+        plot_url = base64.b64encode(img.getvalue()).decode()
+        pt.close(fig)
 
     return render_template('admin_summary.html', plot_url=plot_url)
     
 @app.route('/search',methods=['GET','POST'])
 def search():
-    conn=sqlite3.connect('parkingvehicle.db')
-    c=conn.cursor()
-    c.execute("SELECT * FROM bookings")
-    uniq=c.fetchall()
-    reqs=[]
-    query=''
-    
-    
-    if request.method == 'POST':
-        print("this is to check",request.method)
-        query = request.form.get('query')
-        print(query)
-        if not query:  
-            return render_template('search.html', 
-                                 error="Please enter a search term")
+    with sqlite3.connect('parkingvehicle.db', timeout=10) as conn:
+        c=conn.cursor()
+        c.execute("SELECT * FROM bookings")
+        uniq=c.fetchall()
+        reqs=[]
+        query=''
         
-        for sloty in uniq:
-           
-                print(sloty[9])
-                user_name=sloty[1]
-                slot_address=sloty[11]
-                
-                if query.lower() in user_name.lower() or query.lower() in slot_address.lower():
+        
+        if request.method == 'POST':
+            print("this is to check",request.method)
+            query = request.form.get('query')
+            print(query)
+            if not query:  
+                return render_template('search.html', 
+                                    error="Please enter a search term")
+            
+            for sloty in uniq:
+            
+                    print(sloty[9])
+                    user_name=sloty[1]
+                    slot_address=sloty[11]
+                    
+                    if query.lower() in user_name.lower() or query.lower() in slot_address.lower():
 
-                    reqs.append(sloty)
+                        reqs.append(sloty)
+            conn.close()
+    
+        
+            return render_template('search.html',reqs=reqs,query=query)
+
         conn.close()
-  
-    
-        return render_template('search.html',reqs=reqs,query=query)
 
-    conn.close()
-
-    return render_template('search.html', reqs=reqs,query=query)
-@app.route('/cost')
-def cost():
-    if 'user_id' not in session:
-        return redirect('/login')
-    
-    user_id = session['user_id']
-    with sqlite3.connect('parkingvehicle.db') as conn:
+        return render_template('search.html', reqs=reqs,query=query)
+    @app.route('/cost')
+    def cost():
+        if 'user_id' not in session:
+            return redirect('/login')
         
-        c = conn.cursor()
-        c.execute("SELECT user_name FROM users WHERE id = ?", (user_id,))
-        result = c.fetchone()
-        user_name=result[0]
-        c.execute("select l.slot_id,l.lot_no,l.vehicle_number,l.entry_time,l.exit_time,l.earning,s.slot_address,s.slot_name from lots as l join slots as s on l.slot_id=s.id where l.user_name=? order by l.entry_time desc",(result[0],))
-        zdata = c.fetchall()
-        for i in zdata:
-            print(i)
+        user_id = session['user_id']
+        with sqlite3.connect('parkingvehicle.db') as conn:
+            
+            c = conn.cursor()
+            c.execute("SELECT user_name FROM users WHERE id = ?", (user_id,))
+            result = c.fetchone()
+            user_name=result[0]
+            c.execute("select l.slot_id,l.lot_no,l.vehicle_number,l.entry_time,l.exit_time,l.earning,s.slot_address,s.slot_name from lots as l join slots as s on l.slot_id=s.id where l.user_name=? order by l.entry_time desc",(result[0],))
+            zdata = c.fetchall()
+            for i in zdata:
+                print(i)
 
-    
+        
 
-    
+        
     
    
     return render_template('cost.html',zdata=zdata,user_name=user_name)
